@@ -9,6 +9,7 @@
 */
 
 #include <iostream>
+#include <functional>
 #include <type_traits>
 
 namespace types {
@@ -50,11 +51,28 @@ template<typename T, typename E> struct Result;
 
 namespace details {
 
+namespace impl {
+    template<typename Func> struct result_of;
+
+    template<typename Ret, typename Cls, typename... Args>
+    struct result_of<Ret (Cls::*)(Args...)> : public result_of<Ret (Args...)> { };
+
+    template<typename Ret, typename... Args>
+    struct result_of<Ret (Args...)> {
+        typedef Ret type;
+    };
+}
+
 template<typename Func>
-struct result_of : public result_of<decltype(&Func::operator())> { };
+struct result_of : public impl::result_of<decltype(&Func::operator())> { };
 
 template<typename Ret, typename Cls, typename... Args>
 struct result_of<Ret (Cls::*) (Args...) const> {
+    typedef Ret type;
+};
+
+template<typename Ret, typename... Args>
+struct result_of<Ret (*)(Args...)> {
     typedef Ret type;
 };
 
@@ -80,9 +98,15 @@ namespace impl {
 
 template<typename T> struct Map;
 
-// General implementation 
 template<typename Ret, typename Cls, typename Arg>
-struct Map<Ret (Cls::*)(Arg) const> {
+struct Map<Ret (Cls::*)(Arg) const> : public Map<Ret (Arg)> { };
+
+template<typename Ret, typename Cls, typename Arg>
+struct Map<Ret (Cls::*)(Arg)> : public Map<Ret (Arg)> { };
+
+// General implementation
+template<typename Ret, typename Arg>
+struct Map<Ret (Arg)> {
 
     template<typename T, typename E, typename Func>
     static Result<Ret, E> map(const Result<T, E>& result, Func func) {
@@ -96,8 +120,8 @@ struct Map<Ret (Cls::*)(Arg) const> {
 };
 
 // Specialization for callback returning void
-template<typename Cls, typename Arg>
-struct Map<void (Cls::*)(Arg) const> {
+template<typename Arg>
+struct Map<void (Arg)> {
 
     template<typename T, typename E, typename Func>
     static Result<void, E> map(const Result<T, E>& result, Func func) {
@@ -111,8 +135,8 @@ struct Map<void (Cls::*)(Arg) const> {
 };
 
 // Specialization for a void Result
-template<typename Ret, typename Cls>
-struct Map<Ret (Cls::*)(void) const> {
+template<typename Ret>
+struct Map<Ret (void)> {
 
     template<typename T, typename E, typename Func>
     static Result<Ret, E> map(const Result<T, E>& result, Func func) {
@@ -126,8 +150,8 @@ struct Map<Ret (Cls::*)(void) const> {
 };
 
 // Specialization for callback returning void on a void Result
-template<typename Cls>
-struct Map<void (Cls::*)(void) const> {
+template<>
+struct Map<void (void)> {
 
     template<typename T, typename E, typename Func>
     static Result<void, E> map(const Result<T, E>& result, Func func) {
@@ -141,8 +165,8 @@ struct Map<void (Cls::*)(void) const> {
 };
 
 // Specialization for a callback returning a Result
-template<typename U, typename E, typename Cls, typename Arg>
-struct Map<Result<U, E> (Cls::*)(Arg) const> {
+template<typename U, typename E, typename Arg>
+struct Map<Result<U, E> (Arg) const> {
 
     template<typename T, typename Func>
     static Result<U, E> map(const Result<T, E>& result, Func func) {
@@ -158,8 +182,8 @@ struct Map<Result<U, E> (Cls::*)(Arg) const> {
 };
 
 // Specialization for a callback returning a void Result
-template<typename E, typename Cls, typename Arg>
-struct Map<Result<void, E> (Cls::*)(Arg) const> {
+template<typename E, typename Arg>
+struct Map<Result<void, E> (Arg) const> {
 
     template<typename T, typename Func>
     static Result<void, E> map(const Result<T, E>& result, Func func) {
@@ -175,8 +199,8 @@ struct Map<Result<void, E> (Cls::*)(Arg) const> {
 };
 
 // Specialization for a void callback returning a Result
-template<typename U, typename E, typename Cls>
-struct Map<Result<U, E> (Cls::*)(void) const> {
+template<typename U, typename E>
+struct Map<Result<U, E> (void) const> {
 
     template<typename Func>
     static Result<U, E> map(const Result<void, E>& result, Func func) {
@@ -192,8 +216,8 @@ struct Map<Result<U, E> (Cls::*)(void) const> {
 };
 
 // Specialization for a void callback returning a void Result
-template<typename E, typename Cls>
-struct Map<Result<void, E> (Cls::*)(void) const> {
+template<typename E>
+struct Map<Result<void, E> (void) const> {
 
     template<typename Func>
     static Result<void, E> map(const Result<void, E>& result, Func func) {
@@ -211,6 +235,10 @@ struct Map<Result<void, E> (Cls::*)(void) const> {
 } // namespace impl
 
 template<typename Func> struct Map : public impl::Map<decltype(&Func::operator())> { };
+
+template<typename Ret, typename... Args> struct Map<Ret (*) (Args...)> : public impl::Map<Ret (Args...)> { };
+template<typename Ret, typename Cls, typename... Args> struct Map<Ret (Cls::*) (Args...)> : public impl::Map<Ret (Args...)> { };
+template<typename Ret, typename... Args> struct Map<std::function<Ret (Args...)>> : public impl::Map<Ret (Args...)> { };
 
 } // namespace ok
 
