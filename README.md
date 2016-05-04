@@ -6,6 +6,8 @@
 exceptions in context where they are not allowed or too slow to be used. `Result<T, E>` is an algebraic data
 type of `Ok(T)` that represents success and `Err(E)` representing an error.
 
+Design of this class has been mainly inspired by Rust's [std::result](https://doc.rust-lang.org/std/result/)
+
 ```
 
 struct Request {
