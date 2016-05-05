@@ -51,6 +51,8 @@ template<typename T, typename E> struct Result;
 
 namespace details {
 
+template<typename ...> struct void_t { typedef void type; };
+
 namespace impl {
     template<typename Func> struct result_of;
 
@@ -577,26 +579,18 @@ struct Constructor<void, E> {
 
 namespace concept {
 
-#pragma GCC diagnostic push
-// We need to disable the -Wunused-value diagnostic for the underneath SFINAE-expression
-// using decltype, otherwise, gcc will warn us that one side of the expression (left-hand
-// side of the comma operator , is not used. Guess what gcc, that's exactly what I intend
-// to do
-#pragma GCC diagnostic ignored "-Wunused-value"
+template<typename T, typename = void> struct EqualityComparable : std::false_type { };
 
-    template<typename T, typename = void> struct EqualityComparable : std::false_type { };
-
-    template<typename T>
-    struct EqualityComparable<T,
-    typename std::enable_if<
-        true, 
-        decltype(std::declval<T>() == std::declval<T>(), void())
-        >::type
-    > : std::true_type
+template<typename T>
+struct EqualityComparable<T,
+typename std::enable_if<
+    true,
+    typename details::void_t<decltype(std::declval<T>() == std::declval<T>())>::type
+    >::type
+> : std::true_type
 {
 };
 
-#pragma GCC diagnostic pop
 
 } // namespace concept
 
