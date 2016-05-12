@@ -186,13 +186,59 @@ struct Map<void (void)> {
     }
 };
 
+// General specialization for a callback returning a Result
+template<typename U, typename E, typename Arg>
+struct Map<Result<U, E> (Arg)> {
+
+    template<typename T, typename Func>
+    static Result<U, E> map(const Result<T, E>& result, Func func) {
+        static_assert(
+                std::is_same<T, Arg>::value ||
+                std::is_convertible<T, Arg>::value,
+                "Incompatible types detected");
+
+        if (result.isOk()) {
+            auto res = func(result.storage().template get<T>());
+            return res;
+        }
+
+        return types::Err<E>(result.storage().template get<E>());
+    }
+};
+
+// Specialization for a void callback returning a Result
+template<typename U, typename E>
+struct Map<Result<U, E> (void)> {
+
+    template<typename T, typename Func>
+    static Result<U, E> map(const Result<T, E>& result, Func func) {
+        static_assert(std::is_same<T, void>::value, "Can not call a void-callback on a non-void Result");
+
+        if (result.isOk()) {
+            auto res = func();
+            return res;
+        }
+
+        return types::Err<E>(result.storage().template get<E>());
+    }
+
+};
+
 } // namespace impl
 
 template<typename Func> struct Map : public impl::Map<decltype(&Func::operator())> { };
 
-template<typename Ret, typename... Args> struct Map<Ret (*) (Args...)> : public impl::Map<Ret (Args...)> { };
-template<typename Ret, typename Cls, typename... Args> struct Map<Ret (Cls::*) (Args...)> : public impl::Map<Ret (Args...)> { };
-template<typename Ret, typename... Args> struct Map<std::function<Ret (Args...)>> : public impl::Map<Ret (Args...)> { };
+template<typename Ret, typename... Args>
+struct Map<Ret (*) (Args...)> : public impl::Map<Ret (Args...)> { };
+
+template<typename Ret, typename Cls, typename... Args>
+struct Map<Ret (Cls::*) (Args...)> : public impl::Map<Ret (Args...)> { };
+
+template<typename Ret, typename Cls, typename... Args>
+struct Map<Ret (Cls::*) (Args...) const> : public impl::Map<Ret (Args...)> { };
+
+template<typename Ret, typename... Args>
+struct Map<std::function<Ret (Args...)>> : public impl::Map<Ret (Args...)> { };
 
 } // namespace ok
 
@@ -241,6 +287,7 @@ template<typename Func> struct Map : public impl::Map<decltype(&Func::operator()
 namespace And {
 
 namespace impl {
+
     template<typename Func> struct Then;
 
     template<typename Ret, typename... Args>
@@ -249,41 +296,40 @@ namespace impl {
     template<typename Ret, typename Cls, typename... Args>
     struct Then<Ret (Cls::*)(Args...)> : public Then<Ret (Args...)> { };
 
-    template<typename U, typename E, typename Arg>
-    struct Then<Result<U, E> (Arg)> {
+    template<typename Ret, typename Cls, typename... Args>
+    struct Then<Ret (Cls::*)(Args...) const> : public Then<Ret (Args...)> { };
 
-        template<typename T, typename Func>
-        static Result<U, E> andThen(const Result<T, E>& result, Func func) {
-            static_assert(
-                    std::is_same<T, Arg>::value ||
-                    std::is_convertible<T, Arg>::value,
-                    "Incompatible types detected");
+    template<typename Ret, typename Arg>
+    struct Then<Ret (Arg)> {
+        static_assert(std::is_same<Ret, void>::value,
+                "then() should not return anything, use map() instead");
 
+        template<typename T, typename E, typename Func>
+        static Result<T, E> then(const Result<T, E>& result, Func func) {
             if (result.isOk()) {
-                auto res = func(result.storage().template get<T>());
-                return res;
+                func(result.storage().template get<T>());
             }
-
-            return types::Err<E>(result.storage().template get<E>());
+            return result;
         }
     };
 
-    template<typename U, typename E>
-    struct Then<Result<U, E> (void)> {
+    template<typename Ret>
+    struct Then<Ret (void)> {
+        static_assert(std::is_same<Ret, void>::value,
+                "then() should not return anything, use map() instead");
 
-        template<typename T, typename Func>
-        static Result<U, E> andThen(const Result<T, E>& result, Func func) {
+        template<typename T, typename E, typename Func>
+        static Result<T, E> then(const Result<T, E>& result, Func func) {
             static_assert(std::is_same<T, void>::value, "Can not call a void-callback on a non-void Result");
 
             if (result.isOk()) {
-                auto res = func();
-                return res;
+                func();
             }
 
-            return types::Err<E>(result.storage().template get<E>());
+            return result;
         }
-
     };
+
 
 } // namespace impl
 
@@ -295,6 +341,9 @@ struct Then<Ret (*) (Args...)> : public impl::Then<Ret (Args...)> { };
 
 template<typename Ret, typename Cls, typename... Args>
 struct Then<Ret (Cls::*)(Args...)> : public impl::Then<Ret (Args...)> { };
+
+template<typename Ret, typename Cls, typename... Args>
+struct Then<Ret (Cls::*)(Args...) const> : public impl::Then<Ret (Args...)> { };
 
 } // namespace And
 
@@ -309,6 +358,9 @@ namespace impl {
 
     template<typename Ret, typename Cls, typename... Args>
     struct Else<Ret (Cls::*)(Args...)> : public Else<Ret (Args...)> { };
+
+    template<typename Ret, typename Cls, typename... Args>
+    struct Else<Ret (Cls::*)(Args...) const> : public Else<Ret (Args...)> { };
 
     template<typename T, typename F, typename Arg>
     struct Else<Result<T, F> (Arg)> {
@@ -378,7 +430,63 @@ struct Else<Ret (*) (Args...)> : public impl::Else<Ret (Args...)> { };
 
 template<typename Ret, typename Cls, typename... Args>
 struct Else<Ret (Cls::*)(Args...)> : public impl::Else<Ret (Args...)> { };
+
+template<typename Ret, typename Cls, typename... Args>
+struct Else<Ret (Cls::*)(Args...) const> : public impl::Else<Ret (Args...)> { };
+
 } // namespace Or
+
+namespace Other {
+
+namespace impl {
+
+    template<typename Func> struct Wise;
+
+    template<typename Ret, typename... Args>
+    struct Wise<Ret (*)(Args...)> : public Wise<Ret (Args...)> { };
+
+    template<typename Ret, typename Cls, typename... Args>
+    struct Wise<Ret (Cls::*)(Args...)> : public Wise<Ret (Args...)> { };
+
+    template<typename Ret, typename Cls, typename... Args>
+    struct Wise<Ret (Cls::*)(Args...) const> : public Wise<Ret (Args...)> { };
+
+    template<typename Ret, typename Arg>
+    struct Wise<Ret (Arg)> {
+
+        template<typename T, typename E, typename Func>
+        static Result<T, E> otherwise(const Result<T, E>& result, Func func) {
+            static_assert(
+                    std::is_same<E, Arg>::value ||
+                    std::is_convertible<E, Arg>::value,
+                    "Incompatible types detected");
+
+            static_assert(std::is_same<Ret, void>::value,
+                    "callback should not return anything, use mapError() for that");
+
+            if (result.isErr()) {
+                func(result.storage().template get<E>());
+            }
+            return result;
+        }
+
+    };
+
+} // namespace impl
+
+template<typename Func>
+struct Wise : public impl::Wise<decltype(&Func::operator())> { };
+
+template<typename Ret, typename... Args>
+struct Wise<Ret (*) (Args...)> : public impl::Wise<Ret (Args...)> { };
+
+template<typename Ret, typename Cls, typename... Args>
+struct Wise<Ret (Cls::*)(Args...)> : public impl::Wise<Ret (Args...)> { };
+
+template<typename Ret, typename Cls, typename... Args>
+struct Wise<Ret (Cls::*)(Args...) const> : public impl::Wise<Ret (Args...)> { };
+
+} // namespace Other
 
 template<typename T, typename E, typename Func,
          typename Ret =
@@ -404,16 +512,14 @@ Ret mapError(const Result<T, E>& result, Func func) {
     return err::Map<Func>::map(result, func);
 }
 
-template<typename T, typename E, typename Func,
-         typename Ret =
-            Result<
-                typename details::ResultOkType<
-                    typename details::result_of<Func>::type
-                >::type,
-            E>
->
-Ret andThen(const Result<T, E>& result, Func func) {
-    return And::Then<Func>::andThen(result, func);
+template<typename T, typename E, typename Func>
+Result<T, E> then(const Result<T, E>& result, Func func) {
+    return And::Then<Func>::then(result, func);
+}
+
+template<typename T, typename E, typename Func>
+Result<T, E> otherwise(const Result<T, E>& result, Func func) {
+    return Other::Wise<Func>::otherwise(result, func);
 }
 
 template<typename T, typename E, typename Func,
@@ -680,16 +786,14 @@ struct Result {
         return details::mapError(*this, func);
     }
 
-    template<typename Func,
-             typename Ret =
-                Result<
-                    typename details::ResultOkType<
-                        typename details::result_of<Func>::type
-                    >::type,
-                E>
-    >
-    Ret andThen(Func func) const {
-        return details::andThen(*this, func);
+    template<typename Func>
+    Result<T, E> then(Func func) const {
+        return details::then(*this, func);
+    }
+
+    template<typename Func>
+    Result<T, E> otherwise(Func func) const {
+        return details::otherwise(*this, func);
     }
 
     template<typename Func,
