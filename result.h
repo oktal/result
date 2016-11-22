@@ -8,6 +8,8 @@
    data type that can either Ok(T) to represent success or Err(E) to represent an error.
 */
 
+#pragma once
+
 #include <iostream>
 #include <functional>
 #include <type_traits>
@@ -38,7 +40,7 @@ types::Ok<CleanT> Ok(T&& val) {
     return types::Ok<CleanT>(std::forward<T>(val));
 }
 
-types::Ok<void> Ok() {
+inline types::Ok<void> Ok() {
     return types::Ok<void>();
 }
 
