@@ -842,6 +842,20 @@ struct Result {
         std::terminate();
     }
 
+    template<typename F = E>
+    typename std::enable_if<
+        !std::is_same<F, void>::value,
+        F
+    >::type
+    unwrapErr() const {
+        if (isErr()) {
+            return storage().template get<F>();
+        }
+
+        std::fprintf(stderr, "Attempting to unwrapErr an ok Result\n");
+        std::terminate();
+    }
+
 private:
     T expect_impl(std::true_type) const { }
     T expect_impl(std::false_type) const { return storage_.template get<T>(); }
