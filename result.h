@@ -668,7 +668,6 @@ struct Constructor<void, E> {
     static void move(Storage<void, E>&& src, Storage<void, E>& dst, ok_tag) {
     }
 
-    template<typename U>
     static void copy(const Storage<void, E>& src, Storage<void, E>& dst, ok_tag) {
     }
 
@@ -677,7 +676,6 @@ struct Constructor<void, E> {
         src.destroy(err_tag());
     }
 
-    template<typename U>
     static void copy(const Storage<void, E>& src, Storage<void, E>& dst, err_tag) {
         dst.rawConstruct(src.template get<E>());
     }
