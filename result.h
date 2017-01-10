@@ -842,7 +842,7 @@ struct Result {
         std::terminate();
     }
 
-    unwrapErr() const {
+    E unwrapErr() const {
         if (isErr()) {
             return storage().template get<E>();
         }
