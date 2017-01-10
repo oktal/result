@@ -842,14 +842,9 @@ struct Result {
         std::terminate();
     }
 
-    template<typename F = E>
-    typename std::enable_if<
-        !std::is_same<F, void>::value,
-        F
-    >::type
     unwrapErr() const {
         if (isErr()) {
-            return storage().template get<F>();
+            return storage().template get<E>();
         }
 
         std::fprintf(stderr, "Attempting to unwrapErr an ok Result\n");
