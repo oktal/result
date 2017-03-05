@@ -19,9 +19,9 @@ struct Error {
         Timeout,
         Invalid,
         TooLong
-    }
+    };
 
-    Error(Kind kind, std::string text);
+    Error(Kind akind, std::string atext) : kind(akind), text(atext) {}
 
     Kind kind;
     std::string text;
