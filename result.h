@@ -13,6 +13,7 @@
 #include <iostream>
 #include <functional>
 #include <type_traits>
+#include <utility>
 
 namespace types {
     template<typename T>
@@ -552,12 +553,12 @@ struct Storage {
 
     void construct(types::Ok<T> ok)
     {
-        new (&storage_) T(ok.val);
+        new (&storage_) T(std::move(ok.val));
         initialized_ = true;
     }
     void construct(types::Err<E> err)
     {
-        new (&storage_) E(err.val);
+        new (&storage_) E(std::move(err.val));
         initialized_ = true;
     }
 
