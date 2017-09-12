@@ -8,7 +8,7 @@ type of `Ok(T)` that represents success and `Err(E)` representing an error.
 
 Design of this class has been mainly inspired by Rust's [std::result](https://doc.rust-lang.org/std/result/)
 
-```
+```c++
 
 struct Request {
 };
@@ -45,7 +45,7 @@ To return a successfull `Result`, use the `Ok()` function. To return an error on
 To extract the value from a `Result<T, E>` type, you can use the `expect()` function that will yield the value
 of an `Ok(T)` or terminate the program with an error message passed as a parameter.
 
-```
+```c++
 Result<uint32_t, uint32_t> r1 = Ok(3u);
 
 auto val = r1.expect("Failed to retrieve the value");
@@ -55,7 +55,7 @@ assert(val == 3);
 `unwrap()` can also be used to extract the value of a `Result`, yielding the value of an `Ok(T)` value or terminating
 the program otherwise:
 
-```
+```c++
 Result<uint32_t, uint32_t> r1 = Ok(3u);
 
 auto val = r1.unwrap();
@@ -64,7 +64,7 @@ assert(val == 3);
 
 Instead a terminating the program, `unwrapOr` can be used to return a default value for an `Err(E)` Result:
 
-```
+```c++
 Result<uint32_t, uint32_t> r1 = Err(9u);
 
 auto val = r1.unwrapOr(0);
@@ -77,7 +77,7 @@ To transform (or map) a `Result<T, E>` to a `Result<U, E>`, `Result` provides a 
 `map` will apply a function to a contained `Ok(T)` value and will return the result of the transformation,
 and will leave an `Err(E)` untouched:
 
-```
+```c++
 std::string stringify(int val) { return std::to_string(val); }
 
 Result<uint32_t, uint32_t> r1 = Ok(2u);
@@ -93,7 +93,7 @@ To map a function to a contained `Err(E)` value, use the `mapError` function.
 
 To *bind* a `Result<T, E>` to a `Result<U, E>`, you can use the `andThen` member function:
 
-```
+```c++
 Result<uint32_t, uint32_t> square(uint32_t val) { return Ok(val * val); }
 
 Result<uint32_t, uint32_t> r1 = Ok(3u);
@@ -104,7 +104,7 @@ assert(r2.unwrap(), 9);
 
 Use `orElse` to apply a function to a contained `Err(E)` value:
 
-```
+```c++
 Result<uint32_t, uint32_t> identity(uint32_t val) { return Ok(val); }
 
 Result<uint32_t, uint32_t> r1 = Err(3u);
@@ -117,7 +117,7 @@ Like Rust, a `TRY` macro is also provided that comes in handy when writing code 
 
 the `TRY` macro will simply call its argument and short-cirtcuit the function returning an `Err(E)` if the operation returned an error `Result`:
 
-```
+```c++
 Result<void, IoError> copy(int srcFd, const char* dstFile) {
 
     auto fd = TRY(open(dstFile));
