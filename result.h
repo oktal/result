@@ -895,7 +895,7 @@ bool operator==(const Result<T, E>& lhs, types::Err<E> err) {
 }
 
 #define TRY(...)                                                   \
-    ({                                                             \
+    __extension__ ({                                               \
         auto res = __VA_ARGS__;                                    \
         if (!res.isOk()) {                                         \
             typedef details::ResultErrType<decltype(res)>::type E; \
