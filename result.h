@@ -746,6 +746,10 @@ struct Result {
             storage_.destroy(details::err_tag());
     }
 
+    inline explicit operator bool() const {
+	    return  ok_;
+    }
+
     bool isOk() const {
         return ok_;
     }
